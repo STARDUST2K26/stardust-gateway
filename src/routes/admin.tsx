@@ -12,6 +12,7 @@ import {
 } from "@/lib/admin.functions";
 import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
 import { TeamRegistry } from "@/components/admin/TeamRegistry";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 const TITLE = "Case Control — STARDUST Admin";
 const DESC = "Restricted console for Project STARDUST case parameters.";
@@ -67,6 +68,25 @@ function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
 
   const loadSettings = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from("event_settings")
+          .select("start_time, ctf_url, stats")
+          .eq("id", 1)
+          .maybeSingle();
+
+        if (!error && data) {
+          setStartTime(toLocalInput(data.start_time || "2026-11-14T09:00:00Z"));
+          setCtfUrl(data.ctf_url || "/ctf");
+          if (Array.isArray(data.stats) && data.stats.length) setStats(data.stats as any);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Admin loadSettings Supabase direct error]:", err);
+      }
+    }
+
     try {
       const s = await settingsFn();
       if (s) {
@@ -75,9 +95,8 @@ function AdminPage() {
         if (s.stats && s.stats.length) setStats(s.stats);
         return;
       }
-    } catch {
-      // Fallback local storage
-    }
+    } catch {}
+
     const savedSettings = localStorage.getItem("stardust_event_settings");
     if (savedSettings) {
       try {
@@ -122,6 +141,7 @@ function AdminPage() {
     setBusy(true);
     setNote(null);
     let ok = false;
+
     try {
       const res = await login({ data: { callsign, password } });
       ok = Boolean(res && res.ok);
@@ -153,6 +173,33 @@ function AdminPage() {
     setNote(null);
     const payload = { startTime: new Date(startTime).toISOString(), ctfUrl, stats };
     let msg = "Case parameters updated";
+
+    // 1. Direct Supabase Cloud update from client
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from("event_settings")
+          .upsert({
+            id: 1,
+            start_time: payload.startTime,
+            ctf_url: payload.ctfUrl,
+            stats: payload.stats as any,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (!error) {
+          msg = "Case parameters synced to Supabase Cloud";
+          localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
+          setBusy(false);
+          setNote(msg);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Admin direct Supabase update error]:", err);
+      }
+    }
+
+    // 2. Server RPC fallback
     try {
       const res = await saveSettings({ data: payload });
       if (res && res.message) msg = res.message;
@@ -160,6 +207,7 @@ function AdminPage() {
       localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
       msg = "Case parameters updated in local storage";
     }
+
     setBusy(false);
     setNote(msg);
   }

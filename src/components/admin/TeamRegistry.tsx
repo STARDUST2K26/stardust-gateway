@@ -7,6 +7,7 @@ import {
   adminSaveTeamClue,
   type TeamClue,
 } from "@/lib/codes.functions";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 const inputClass =
   "w-full rounded-sm border border-signal/20 bg-void/60 px-3 py-2.5 font-mono text-xs tracking-[0.08em] text-foreground outline-none transition-colors duration-300 focus:border-signal/60";
@@ -30,15 +31,40 @@ export function TeamRegistry() {
   const [note, setNote] = useState<string | null>(null);
 
   const load = async () => {
+    // 1. Direct Supabase load
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from("team_clues")
+          .select("id, team_name, clue, access_code")
+          .order("team_name", { ascending: true });
+
+        if (!error && data) {
+          setRows(
+            data.map((r: any) => ({
+              id: String(r.id),
+              teamName: r.team_name,
+              clue: r.clue,
+              accessCode: r.access_code,
+            }))
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn("[TeamRegistry Supabase direct load error]:", err);
+      }
+    }
+
+    // 2. Server RPC load
     try {
       const data = await list();
       if (Array.isArray(data)) {
         setRows(data);
         return;
       }
-    } catch {
-      // Fallback local storage
-    }
+    } catch {}
+
+    // 3. Local storage fallback
     const saved = localStorage.getItem("stardust_team_clues");
     if (saved) {
       try {
@@ -57,29 +83,54 @@ export function TeamRegistry() {
     let msg = "Clue updated";
     let ok = false;
 
-    try {
-      const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
-      ok = Boolean(res && res.ok);
-      if (res && res.message) msg = res.message;
-    } catch {
-      // Fallback local storage
-      const current = [...rows];
-      if (id) {
-        const idx = current.findIndex((r) => r.id === id);
-        if (idx !== -1) current[idx] = { ...current[idx], ...row };
-      } else {
-        const newEntry: TeamClue = {
-          id: String(Date.now()),
-          teamName: row.teamName,
+    // 1. Direct Supabase Cloud sync from browser
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          team_name: row.teamName,
           clue: row.clue,
-          accessCode: row.accessCode,
+          access_code: row.accessCode,
+          updated_at: new Date().toISOString(),
         };
-        current.push(newEntry);
+
+        const { error } = id
+          ? await supabase.from("team_clues").update(payload).eq("id", id)
+          : await supabase.from("team_clues").insert(payload);
+
+        if (!error) {
+          ok = true;
+          msg = "Clue synced to Supabase Cloud";
+        }
+      } catch (err) {
+        console.warn("[TeamRegistry Supabase direct commit error]:", err);
       }
-      localStorage.setItem("stardust_team_clues", JSON.stringify(current));
-      setRows(current);
-      ok = true;
-      msg = "Clue saved to local storage";
+    }
+
+    // 2. Server RPC / local storage fallback
+    if (!ok) {
+      try {
+        const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
+        ok = Boolean(res && res.ok);
+        if (res && res.message) msg = res.message;
+      } catch {
+        const current = [...rows];
+        if (id) {
+          const idx = current.findIndex((r) => r.id === id);
+          if (idx !== -1) current[idx] = { ...current[idx], ...row };
+        } else {
+          const newEntry: TeamClue = {
+            id: String(Date.now()),
+            teamName: row.teamName,
+            clue: row.clue,
+            accessCode: row.accessCode,
+          };
+          current.push(newEntry);
+        }
+        localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+        setRows(current);
+        ok = true;
+        msg = "Clue saved to local storage";
+      }
     }
 
     setBusy(false);
@@ -92,13 +143,31 @@ export function TeamRegistry() {
 
   async function drop(id: string) {
     setBusy(true);
-    try {
-      await remove({ data: { id } });
-    } catch {
-      const current = rows.filter((r) => r.id !== id);
-      localStorage.setItem("stardust_team_clues", JSON.stringify(current));
-      setRows(current);
+    setNote(null);
+
+    let ok = false;
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.from("team_clues").delete().eq("id", id);
+        if (!error) {
+          ok = true;
+          setNote("Entry deleted from Supabase Cloud");
+        }
+      } catch (err) {
+        console.warn("[TeamRegistry Supabase direct drop error]:", err);
+      }
     }
+
+    if (!ok) {
+      try {
+        await remove({ data: { id } });
+      } catch {
+        const current = rows.filter((r) => r.id !== id);
+        localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+        setRows(current);
+      }
+    }
+
     setBusy(false);
     await load();
   }

@@ -4,14 +4,27 @@ import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
 import "./styles.css";
 
-// Ensure $_TSR global expected by TanStack Start exists before any internal calls
+// Safeguard TanStack Start hydration globals using Proxy shield for static SPA mode
 if (typeof window !== "undefined") {
-  (window as any).$_TSR = (window as any).$_TSR || {
-    t: new Map(),
-    buffer: [],
-    initialized: false,
-    router: { manifest: {} },
-  };
+  if (!window.$_TSR) {
+    const baseTSR = {
+      t: new Map(),
+      buffer: [],
+      initialized: false,
+      router: { manifest: {} },
+      h: () => {},
+      clean: () => {},
+      init: () => {},
+    };
+    window.$_TSR = new Proxy(baseTSR, {
+      get(target, prop, receiver) {
+        if (prop in target) {
+          return Reflect.get(target, prop, receiver);
+        }
+        return () => {};
+      },
+    });
+  }
   (window as any).__TSR_DEHYDRATED__ = (window as any).__TSR_DEHYDRATED__ || { data: {} };
   (window as any).__TSR_ROUTER__ = (window as any).__TSR_ROUTER__ || {};
 }

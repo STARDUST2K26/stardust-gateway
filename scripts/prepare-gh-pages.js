@@ -35,14 +35,27 @@ const htmlContent = `<!DOCTYPE html>
       href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap"
     />
     <script>
-      window.$_TSR = window.$_TSR || {
-        t: new Map(),
-        buffer: [],
-        initialized: false,
-        router: { manifest: {} }
-      };
-      window.__TSR_DEHYDRATED__ = window.__TSR_DEHYDRATED__ || { data: {} };
-      window.__TSR_ROUTER__ = window.__TSR_ROUTER__ || {};
+      (function() {
+        if (!window.$_TSR) {
+          var baseTSR = {
+            t: new Map(),
+            buffer: [],
+            initialized: false,
+            router: { manifest: {} },
+            h: function() {},
+            clean: function() {},
+            init: function() {}
+          };
+          window.$_TSR = new Proxy(baseTSR, {
+            get: function(target, prop) {
+              if (prop in target) return target[prop];
+              return function() {};
+            }
+          });
+        }
+        window.__TSR_DEHYDRATED__ = window.__TSR_DEHYDRATED__ || { data: {} };
+        window.__TSR_ROUTER__ = window.__TSR_ROUTER__ || {};
+      })();
     </script>
     ${cssLink}
   </head>
@@ -58,4 +71,4 @@ fs.writeFileSync(path.join(publicDir, "index.html"), htmlContent, "utf-8");
 fs.writeFileSync(path.join(publicDir, "404.html"), htmlContent, "utf-8");
 fs.writeFileSync(path.join(publicDir, ".nojekyll"), "", "utf-8");
 
-console.log(`[GitHub Pages] Successfully injected compiled assets and $_TSR hydration stub into .output/public/index.html & 404.html (JS: ${jsFile}, CSS: ${cssFile || "none"})`);
+console.log(`[GitHub Pages] Successfully injected compiled assets and Proxy $_TSR hydration stub into .output/public/index.html & 404.html (JS: ${jsFile}, CSS: ${cssFile || "none"})`);

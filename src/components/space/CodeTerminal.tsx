@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { lookupAccessCode } from "@/lib/codes.functions";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+
+const DEFAULT_CLUES = [
+  { id: "1", teamName: "ORION DECRYPTION TEAM", clue: "asteria-71-alpha", accessCode: "STARDUST-KEY-7109" },
+  { id: "2", teamName: "SECTOR 4 RECOVERY", clue: "mirror-log-1971", accessCode: "STARDUST-KEY-9942" },
+  { id: "3", teamName: "COMMAND PROTOCOL", clue: "stardust-2026", accessCode: "STARDUST-KEY-2026" },
+];
 
 export function CodeTerminal() {
   const [clue, setClue] = useState("");
@@ -14,35 +21,82 @@ export function CodeTerminal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clue.trim() || loading) return;
+    const inputClue = clue.trim().toLowerCase();
+    if (!inputClue || loading) return;
 
     setLoading(true);
     setResult({ status: "idle" });
     setCopied(false);
 
+    let matchFound = false;
+    let foundTeamName = "";
+    let foundAccessCode = "";
+
+    // 1. Try server RPC function first
     try {
-      const res = await lookupAccessCode({ data: { clue: clue.trim() } });
-      if (res.found) {
-        setResult({
-          status: "success",
-          teamName: res.teamName,
-          accessCode: res.accessCode,
-        });
-      } else {
-        setResult({
-          status: "error",
-          message: "UNRECOGNIZED FRAGMENT // NO RECORD FOUND IN STARDUST ARCHIVE",
-        });
+      const res = await lookupAccessCode({ data: { clue: inputClue } });
+      if (res && res.found) {
+        matchFound = true;
+        foundTeamName = res.teamName;
+        foundAccessCode = res.accessCode;
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // Server RPC unhosted (static GitHub Pages) -> Fall through to client direct queries
+    }
+
+    // 2. Direct Supabase Client Query (if Supabase credentials configured)
+    if (!matchFound && isSupabaseConfigured()) {
+      try {
+        const { data: rows, error } = await supabase
+          .from("team_clues")
+          .select("team_name, clue, access_code");
+
+        if (!error && rows) {
+          const match = rows.find((r: any) => r.clue.trim().toLowerCase() === inputClue);
+          if (match) {
+            matchFound = true;
+            foundTeamName = match.team_name;
+            foundAccessCode = match.access_code;
+          }
+        }
+      } catch (err) {
+        console.warn("[CodeTerminal Supabase direct query fallback]:", err);
+      }
+    }
+
+    // 3. Local Storage / Built-in Registry Fallback
+    if (!matchFound) {
+      const stored = localStorage.getItem("stardust_team_clues");
+      let allClues = DEFAULT_CLUES;
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length) allClues = [...parsed, ...DEFAULT_CLUES];
+        } catch {}
+      }
+
+      const localMatch = allClues.find((r) => r.clue.trim().toLowerCase() === inputClue);
+      if (localMatch) {
+        matchFound = true;
+        foundTeamName = localMatch.teamName;
+        foundAccessCode = localMatch.accessCode;
+      }
+    }
+
+    if (matchFound) {
+      setResult({
+        status: "success",
+        teamName: foundTeamName,
+        accessCode: foundAccessCode,
+      });
+    } else {
       setResult({
         status: "error",
-        message: "COMMUNICATION FAILURE // ARCHIVE UNREACHABLE",
+        message: "UNRECOGNIZED FRAGMENT // NO RECORD FOUND IN STARDUST ARCHIVE",
       });
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const copyCode = () => {

@@ -13,5 +13,9 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
   });
 
+  if (!(router as any).ssr) {
+    (router as any).ssr = {};
+  }
+
   return router;
 };

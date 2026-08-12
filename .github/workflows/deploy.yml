@@ -39,10 +39,7 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Prepare GitHub Pages static assets
-        run: |
-          touch .output/public/.nojekyll
-          cp index.html .output/public/index.html
-          cp index.html .output/public/404.html
+        run: node scripts/prepare-gh-pages.js
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

@@ -5,6 +5,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+const DEFAULT_SUPABASE_URL = "https://7CcQvacUw628PZPvAKovug_vXPxmRPn.supabase.co";
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_7CcQvacUw628PZPvAKovug_vXPxmRPn";
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
@@ -30,12 +33,12 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env['SUPABASE_URL'] || process.env['VITE_SUPABASE_URL'] || 'https://atitasglqbcztzcgtcvf.supabase.co';
+  const SUPABASE_URL = process.env['SUPABASE_URL'] || process.env['VITE_SUPABASE_URL'] || DEFAULT_SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY =
     process.env['SUPABASE_SERVICE_ROLE_KEY'] ||
     process.env['SUPABASE_PUBLISHABLE_KEY'] ||
     process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    'sb_publishable_MP-v4Zpm2k3xlimUTjShtw_2cazV0cZ';
+    DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [

@@ -6,13 +6,26 @@ import { BootSequence } from "@/components/space/BootSequence";
 import { Hero } from "@/components/space/Hero";
 import { Film } from "@/components/space/Film";
 import { getEventSettings } from "@/lib/admin.functions";
+import { DEFAULT_STATS } from "@/lib/mission";
 
 const TITLE = "STARDUST — Computer Week 2026 Classified Investigation";
 const DESC =
   "The 1971 ASTERIA mission went silent and the MIRROR records were sealed. Project STARDUST is declassified for 36 hours. Seven layers. One key.";
 
 export const Route = createFileRoute("/")({
-  loader: () => getEventSettings(),
+  loader: async () => {
+    try {
+      const res = await getEventSettings();
+      if (res && res.startTime) return res;
+    } catch (err) {
+      console.warn("[Route loader fallback]:", err);
+    }
+    return {
+      startTime: "2026-11-14T09:00:00Z",
+      ctfUrl: "/ctf",
+      stats: DEFAULT_STATS,
+    };
+  },
   head: () => ({
     meta: [
       { title: TITLE },

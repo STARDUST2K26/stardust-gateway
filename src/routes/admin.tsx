@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 
-import {
-  adminChangePassword,
-  adminLogin,
-  adminLogout,
-  adminUpdateSettings,
-  getAdminStatus,
-  getEventSettings,
-} from "@/lib/admin.functions";
 import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
 import { TeamRegistry } from "@/components/admin/TeamRegistry";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { broadcastSync, subscribeToSync } from "@/lib/sync";
+import { loadStaticConfig } from "@/lib/static-config";
 
 const TITLE = "Case Control — STARDUST Admin";
 const DESC = "Restricted console for Project STARDUST case parameters.";
@@ -47,13 +38,6 @@ const buttonClass =
   "inline-flex items-center gap-3 rounded-full border border-signal/30 bg-signal/[0.06] px-7 py-3 font-mono text-[10px] uppercase tracking-[0.32em] text-foreground transition-all duration-500 ease-[var(--ease-cine)] hover:border-signal/70 hover:bg-signal/[0.14] disabled:opacity-40";
 
 function AdminPage() {
-  const status = useServerFn(getAdminStatus);
-  const settingsFn = useServerFn(getEventSettings);
-  const login = useServerFn(adminLogin);
-  const logout = useServerFn(adminLogout);
-  const saveSettings = useServerFn(adminUpdateSettings);
-  const changePassword = useServerFn(adminChangePassword);
-
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -69,33 +53,14 @@ function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
 
   const loadSettings = async () => {
-    if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await supabase
-          .from("event_settings")
-          .select("start_time, ctf_url, stats")
-          .eq("id", 1)
-          .maybeSingle();
-
-        if (!error && data) {
-          setStartTime(toLocalInput(data.start_time || "2026-11-14T09:00:00Z"));
-          setCtfUrl(data.ctf_url || "/ctf");
-          if (Array.isArray(data.stats) && data.stats.length) setStats(data.stats as any);
-          return;
-        }
-      } catch (err) {
-        console.warn("[Admin loadSettings Supabase direct error]:", err);
-      }
-    }
-
     try {
-      const s = await settingsFn();
-      if (s) {
-        setStartTime(toLocalInput(s.startTime));
-        setCtfUrl(s.ctfUrl || "");
-        if (s.stats && s.stats.length) setStats(s.stats);
-        return;
-      }
+      const config = await loadStaticConfig();
+      const savedSettings = localStorage.getItem("stardust_event_settings");
+      const settings = savedSettings ? JSON.parse(savedSettings) : config.eventSettings;
+      setStartTime(toLocalInput(settings.startTime));
+      setCtfUrl(settings.ctfUrl || "/ctf");
+      if (settings.stats && settings.stats.length) setStats(settings.stats);
+      return;
     } catch {}
 
     const savedSettings = localStorage.getItem("stardust_event_settings");
@@ -114,19 +79,8 @@ function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      try {
-        const s = await status();
-        if (s && typeof s.authenticated === "boolean") {
-          setAuthed(s.authenticated);
-          if (s.authenticated) await loadSettings();
-        } else {
-          checkLocalAuth();
-        }
-      } catch {
-        checkLocalAuth();
-      } finally {
-        setReady(true);
-      }
+      checkLocalAuth();
+      setReady(true);
     })();
 
     const unsubscribe = subscribeToSync((type) => {
@@ -149,16 +103,14 @@ function AdminPage() {
     let ok = false;
 
     try {
-      const res = await login({ data: { callsign, password } });
-      ok = Boolean(res && res.ok);
-    } catch {
-      const storedCallsign = localStorage.getItem("stardust_admin_callsign") || "COMMANDER";
-      const storedPassword = localStorage.getItem("stardust_admin_password") || "STARDUST2026!";
+      const config = await loadStaticConfig();
+      const storedCallsign = localStorage.getItem("stardust_admin_callsign") || config.adminCredentials.callsign;
+      const storedPassword = localStorage.getItem("stardust_admin_password") || config.adminCredentials.password;
       const inputCallsign = callsign.trim().toUpperCase();
-      if (inputCallsign === storedCallsign.toUpperCase() && (password === storedPassword || password === "STARDUST2026!" || password === "admin")) {
+      if (inputCallsign === storedCallsign.toUpperCase() && password === storedPassword) {
         ok = true;
       }
-    }
+    } catch {}
 
     setBusy(false);
     if (!ok) {
@@ -177,35 +129,10 @@ function AdminPage() {
     setBusy(true);
     setNote(null);
     const payload = { startTime: new Date(startTime).toISOString(), ctfUrl, stats };
-    let msg = "Case parameters updated";
+    const msg = "Case parameters saved in this browser. Edit public/stardust-config.json to make it permanent.";
 
     localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
     broadcastSync("settings");
-
-    if (isSupabaseConfigured()) {
-      try {
-        const { error } = await supabase
-          .from("event_settings")
-          .upsert({
-            id: 1,
-            start_time: payload.startTime,
-            ctf_url: payload.ctfUrl,
-            stats: payload.stats as any,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (!error) {
-          msg = "Case parameters synced to Cloud & Local Storage";
-        }
-      } catch (err) {
-        console.warn("[Admin direct Supabase update error]:", err);
-      }
-    } else {
-      try {
-        const res = await saveSettings({ data: payload });
-        if (res && res.message) msg = res.message;
-      } catch {}
-    }
 
     setBusy(false);
     setNote(msg);
@@ -215,22 +142,20 @@ function AdminPage() {
     e.preventDefault();
     setBusy(true);
     setNote(null);
-    let msg = "Access code rotated";
+    let msg = "Access code rotated in this browser";
     let ok = false;
     try {
-      const res = await changePassword({ data: { currentPassword, newPassword } });
-      ok = Boolean(res && res.ok);
-      if (res && res.message) msg = res.message;
-    } catch {
-      const storedPassword = localStorage.getItem("stardust_admin_password") || "STARDUST2026!";
-      if (currentPassword === storedPassword || currentPassword === "STARDUST2026!" || currentPassword === "admin") {
+      const config = await loadStaticConfig();
+      const storedPassword =
+        localStorage.getItem("stardust_admin_password") || config.adminCredentials.password;
+      if (currentPassword === storedPassword) {
         localStorage.setItem("stardust_admin_password", newPassword);
         ok = true;
-        msg = "Access code rotated in local storage";
+        msg = "Access code rotated in this browser. Edit public/stardust-config.json to make it permanent.";
       } else {
         msg = "Current password is incorrect";
       }
-    }
+    } catch {}
     setBusy(false);
     setNote(msg);
     if (ok) {
@@ -376,7 +301,6 @@ function AdminPage() {
             <button
               className={buttonClass}
               onClick={async () => {
-                try { await logout(); } catch {}
                 localStorage.removeItem("stardust_admin_session");
                 setAuthed(false);
               }}

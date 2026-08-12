@@ -1,0 +1,36 @@
+{
+  "eventSettings": {
+    "startTime": "2026-11-14T09:00:00Z",
+    "ctfUrl": "/ctf",
+    "stats": [
+      { "label": "INVESTIGATORS", "value": "60" },
+      { "label": "HOURS OF ACCESS", "value": "1.5" },
+      { "label": "SEALED LAYERS", "value": "04" },
+      { "label": "FILES RECOVERED", "value": "0.02%" }
+    ]
+  },
+  "adminCredentials": {
+    "callsign": "COMMANDER",
+    "password": "STARDUST2026!"
+  },
+  "teamClues": [
+    {
+      "id": "clue-1",
+      "teamName": "ORION PHALANX",
+      "clue": "ASTERIA-71-ALPHA",
+      "accessCode": "KEY-7109-ALPHA"
+    },
+    {
+      "id": "clue-2",
+      "teamName": "CYGNUS INITIATIVE",
+      "clue": "MIRROR-SIGNAL-9",
+      "accessCode": "KEY-9942-BETA"
+    },
+    {
+      "id": "clue-3",
+      "teamName": "VANGUARD SEC",
+      "clue": "DEEPSPACE-OMEGA",
+      "accessCode": "KEY-0071-OMEGA"
+    }
+  ]
+}

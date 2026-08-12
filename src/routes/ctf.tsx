@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CodeTerminal } from "@/components/space/CodeTerminal";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { loadStaticConfig } from "@/lib/static-config";
 
 const TITLE = "CTF Case Files — STARDUST Classified Portal";
 const DESC = "Project STARDUST CTF case files, declassified records, and fragment verification terminal.";
@@ -26,21 +26,12 @@ function CtfPage() {
 
   useEffect(() => {
     (async () => {
-      if (isSupabaseConfigured()) {
-        try {
-          const { data } = await supabase
-            .from("event_settings")
-            .select("ctf_url, start_time")
-            .eq("id", 1)
-            .maybeSingle();
-
-          if (data) {
-            if (data.ctf_url) setCtfUrl(data.ctf_url);
-            if (data.start_time) setStartTime(data.start_time);
-            return;
-          }
-        } catch {}
-      }
+      try {
+        const config = await loadStaticConfig();
+        if (config.eventSettings.ctfUrl) setCtfUrl(config.eventSettings.ctfUrl);
+        if (config.eventSettings.startTime) setStartTime(config.eventSettings.startTime);
+        return;
+      } catch {}
 
       const saved = localStorage.getItem("stardust_event_settings");
       if (saved) {

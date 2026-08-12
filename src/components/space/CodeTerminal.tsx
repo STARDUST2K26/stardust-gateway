@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { lookupAccessCode } from "@/lib/codes.functions";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { subscribeToSync } from "@/lib/sync";
+import { loadStaticConfig } from "@/lib/static-config";
 
 const DEFAULT_CLUES = [
   { id: "1", teamName: "ORION DECRYPTION TEAM", clue: "asteria-71-alpha", accessCode: "STARDUST-KEY-7109" },
@@ -42,9 +41,13 @@ export function CodeTerminal() {
     let foundTeamName = "";
     let foundAccessCode = "";
 
-    // 1. Local Storage / Built-in Registry First for Instant Response
+    // 1. Static config / Local Storage first for backend-free deployments
     const stored = localStorage.getItem("stardust_team_clues");
     let allClues = DEFAULT_CLUES;
+    try {
+      const config = await loadStaticConfig();
+      allClues = [...config.teamClues, ...DEFAULT_CLUES];
+    } catch {}
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -57,38 +60,6 @@ export function CodeTerminal() {
       matchFound = true;
       foundTeamName = localMatch.teamName;
       foundAccessCode = localMatch.accessCode;
-    }
-
-    // 2. Direct Supabase Client Query
-    if (!matchFound && isSupabaseConfigured()) {
-      try {
-        const { data: rows, error } = await supabase
-          .from("team_clues")
-          .select("team_name, clue, access_code");
-
-        if (!error && rows) {
-          const match = rows.find((r: any) => r.clue.trim().toLowerCase() === inputClue);
-          if (match) {
-            matchFound = true;
-            foundTeamName = match.team_name;
-            foundAccessCode = match.access_code;
-          }
-        }
-      } catch (err) {
-        console.warn("[CodeTerminal Supabase direct query fallback]:", err);
-      }
-    }
-
-    // 3. Server RPC function fallback
-    if (!matchFound) {
-      try {
-        const res = await lookupAccessCode({ data: { clue: inputClue } });
-        if (res && res.found) {
-          matchFound = true;
-          foundTeamName = res.teamName;
-          foundAccessCode = res.accessCode;
-        }
-      } catch {}
     }
 
     if (matchFound) {

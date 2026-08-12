@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 
-import {
-  adminDeleteTeamClue,
-  adminListTeamClues,
-  adminSaveTeamClue,
-  type TeamClue,
-} from "@/lib/codes.functions";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import type { TeamClue } from "@/lib/codes.functions";
 import { broadcastSync, subscribeToSync } from "@/lib/sync";
+import { loadStaticConfig } from "@/lib/static-config";
 
 const inputClass =
   "w-full rounded-sm border border-signal/20 bg-void/60 px-3 py-2.5 font-mono text-xs tracking-[0.08em] text-foreground outline-none transition-colors duration-300 focus:border-signal/60";
@@ -22,56 +16,30 @@ const EMPTY: Draft = { teamName: "", clue: "", accessCode: "" };
 
 /** Spreadsheet-style registry mapping a recovered clue to a team and its next-day code. */
 export function TeamRegistry() {
-  const list = useServerFn(adminListTeamClues);
-  const save = useServerFn(adminSaveTeamClue);
-  const remove = useServerFn(adminDeleteTeamClue);
-
   const [rows, setRows] = useState<TeamClue[]>([]);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const load = async () => {
-    // 1. Direct Supabase load
-    if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await supabase
-          .from("team_clues")
-          .select("id, team_name, clue, access_code")
-          .order("team_name", { ascending: true });
-
-        if (!error && data) {
-          setRows(
-            data.map((r: any) => ({
-              id: String(r.id),
-              teamName: r.team_name,
-              clue: r.clue,
-              accessCode: r.access_code,
-            }))
-          );
-          return;
-        }
-      } catch (err) {
-        console.warn("[TeamRegistry Supabase direct load error]:", err);
-      }
-    }
-
-    // 2. Server RPC load
+    let configRows: TeamClue[] = [];
     try {
-      const data = await list();
-      if (Array.isArray(data)) {
-        setRows(data);
-        return;
-      }
+      const config = await loadStaticConfig();
+      configRows = config.teamClues;
     } catch {}
 
-    // 3. Local storage fallback
     const saved = localStorage.getItem("stardust_team_clues");
     if (saved) {
       try {
-        setRows(JSON.parse(saved));
+        const localRows = JSON.parse(saved);
+        if (Array.isArray(localRows)) {
+          setRows(localRows);
+          return;
+        }
       } catch {}
     }
+
+    setRows(configRows);
   };
 
   useEffect(() => {
@@ -107,32 +75,7 @@ export function TeamRegistry() {
     broadcastSync("clues");
     ok = true;
 
-    // Direct Supabase Cloud sync from browser
-    if (isSupabaseConfigured()) {
-      try {
-        const payload = {
-          team_name: row.teamName,
-          clue: row.clue,
-          access_code: row.accessCode,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error } = id
-          ? await supabase.from("team_clues").update(payload).eq("id", id)
-          : await supabase.from("team_clues").insert(payload);
-
-        if (!error) {
-          msg = "Clue synced to Supabase Cloud & Local Storage";
-        }
-      } catch (err) {
-        console.warn("[TeamRegistry Supabase direct commit error]:", err);
-      }
-    } else {
-      try {
-        const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
-        if (res && res.message) msg = res.message;
-      } catch {}
-    }
+    msg = "Clue saved in this browser. Edit public/stardust-config.json to make it permanent.";
 
     setBusy(false);
     setNote(msg);
@@ -151,20 +94,7 @@ export function TeamRegistry() {
     setRows(current);
     broadcastSync("clues");
 
-    if (isSupabaseConfigured()) {
-      try {
-        const { error } = await supabase.from("team_clues").delete().eq("id", id);
-        if (!error) {
-          setNote("Entry deleted from Supabase Cloud & Local Storage");
-        }
-      } catch (err) {
-        console.warn("[TeamRegistry Supabase direct drop error]:", err);
-      }
-    } else {
-      try {
-        await remove({ data: { id } });
-      } catch {}
-    }
+    setNote("Entry deleted in this browser. Edit public/stardust-config.json to make it permanent.");
 
     setBusy(false);
     await load();

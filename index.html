@@ -14,11 +14,24 @@
     <script>
       (function() {
         if (!window.$_TSR) {
+          var baseRouter = {
+            manifest: {},
+            matches: [],
+            dehydratedData: {},
+            state: { matches: [] }
+          };
+          var routerProxy = new Proxy(baseRouter, {
+            get: function(target, prop) {
+              if (prop in target) return target[prop];
+              if (prop === 'matches' || prop === 'buffer' || prop === 'scripts') return [];
+              return {};
+            }
+          });
           var baseTSR = {
             t: new Map(),
             buffer: [],
             initialized: false,
-            router: { manifest: {} },
+            router: routerProxy,
             h: function() {},
             clean: function() {},
             init: function() {}
@@ -26,6 +39,7 @@
           window.$_TSR = new Proxy(baseTSR, {
             get: function(target, prop) {
               if (prop in target) return target[prop];
+              if (prop === 'matches' || prop === 'buffer' || prop === 'scripts') return [];
               return function() {};
             }
           });

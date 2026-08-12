@@ -37,11 +37,24 @@ const htmlContent = `<!DOCTYPE html>
     <script>
       (function() {
         if (!window.$_TSR) {
+          var baseRouter = {
+            manifest: {},
+            matches: [],
+            dehydratedData: {},
+            state: { matches: [] }
+          };
+          var routerProxy = new Proxy(baseRouter, {
+            get: function(target, prop) {
+              if (prop in target) return target[prop];
+              if (prop === 'matches' || prop === 'buffer' || prop === 'scripts') return [];
+              return {};
+            }
+          });
           var baseTSR = {
             t: new Map(),
             buffer: [],
             initialized: false,
-            router: { manifest: {} },
+            router: routerProxy,
             h: function() {},
             clean: function() {},
             init: function() {}
@@ -49,6 +62,7 @@ const htmlContent = `<!DOCTYPE html>
           window.$_TSR = new Proxy(baseTSR, {
             get: function(target, prop) {
               if (prop in target) return target[prop];
+              if (prop === 'matches' || prop === 'buffer' || prop === 'scripts') return [];
               return function() {};
             }
           });
@@ -71,4 +85,4 @@ fs.writeFileSync(path.join(publicDir, "index.html"), htmlContent, "utf-8");
 fs.writeFileSync(path.join(publicDir, "404.html"), htmlContent, "utf-8");
 fs.writeFileSync(path.join(publicDir, ".nojekyll"), "", "utf-8");
 
-console.log(`[GitHub Pages] Successfully injected compiled assets and Proxy $_TSR hydration stub into .output/public/index.html & 404.html (JS: ${jsFile}, CSS: ${cssFile || "none"})`);
+console.log(`[GitHub Pages] Successfully injected compiled assets and router.matches Proxy hydration stub into .output/public/index.html & 404.html (JS: ${jsFile}, CSS: ${cssFile || "none"})`);

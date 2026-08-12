@@ -7,20 +7,38 @@ import "./styles.css";
 // Safeguard TanStack Start hydration globals using Proxy shield for static SPA mode
 if (typeof window !== "undefined") {
   if (!window.$_TSR) {
+    const baseRouter = {
+      manifest: {},
+      matches: [],
+      dehydratedData: {},
+      state: { matches: [] },
+    };
+    const routerProxy = new Proxy(baseRouter, {
+      get(target, prop, receiver) {
+        if (prop in target) {
+          return Reflect.get(target, prop, receiver);
+        }
+        if (prop === "matches" || prop === "buffer" || prop === "scripts") return [];
+        return {};
+      },
+    });
+
     const baseTSR = {
       t: new Map(),
       buffer: [],
       initialized: false,
-      router: { manifest: {} },
+      router: routerProxy,
       h: () => {},
       clean: () => {},
       init: () => {},
     };
+
     window.$_TSR = new Proxy(baseTSR, {
       get(target, prop, receiver) {
         if (prop in target) {
           return Reflect.get(target, prop, receiver);
         }
+        if (prop === "matches" || prop === "buffer" || prop === "scripts") return [];
         return () => {};
       },
     });

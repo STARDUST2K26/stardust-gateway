@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { lookupAccessCode } from "@/lib/codes.functions";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { subscribeToSync } from "@/lib/sync";
 
 const DEFAULT_CLUES = [
   { id: "1", teamName: "ORION DECRYPTION TEAM", clue: "asteria-71-alpha", accessCode: "STARDUST-KEY-7109" },
@@ -19,6 +20,15 @@ export function CodeTerminal() {
   }>({ status: "idle" });
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    const unsubscribe = subscribeToSync((type) => {
+      if (type === "clues" && result.status !== "idle") {
+        setResult({ status: "idle" });
+      }
+    });
+    return () => unsubscribe();
+  }, [result.status]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const inputClue = clue.trim().toLowerCase();
@@ -32,19 +42,24 @@ export function CodeTerminal() {
     let foundTeamName = "";
     let foundAccessCode = "";
 
-    // 1. Try server RPC function first
-    try {
-      const res = await lookupAccessCode({ data: { clue: inputClue } });
-      if (res && res.found) {
-        matchFound = true;
-        foundTeamName = res.teamName;
-        foundAccessCode = res.accessCode;
-      }
-    } catch {
-      // Server RPC unhosted (static GitHub Pages) -> Fall through to client direct queries
+    // 1. Local Storage / Built-in Registry First for Instant Response
+    const stored = localStorage.getItem("stardust_team_clues");
+    let allClues = DEFAULT_CLUES;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length) allClues = [...parsed, ...DEFAULT_CLUES];
+      } catch {}
     }
 
-    // 2. Direct Supabase Client Query (if Supabase credentials configured)
+    const localMatch = allClues.find((r) => r.clue.trim().toLowerCase() === inputClue);
+    if (localMatch) {
+      matchFound = true;
+      foundTeamName = localMatch.teamName;
+      foundAccessCode = localMatch.accessCode;
+    }
+
+    // 2. Direct Supabase Client Query
     if (!matchFound && isSupabaseConfigured()) {
       try {
         const { data: rows, error } = await supabase
@@ -64,23 +79,16 @@ export function CodeTerminal() {
       }
     }
 
-    // 3. Local Storage / Built-in Registry Fallback
+    // 3. Server RPC function fallback
     if (!matchFound) {
-      const stored = localStorage.getItem("stardust_team_clues");
-      let allClues = DEFAULT_CLUES;
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length) allClues = [...parsed, ...DEFAULT_CLUES];
-        } catch {}
-      }
-
-      const localMatch = allClues.find((r) => r.clue.trim().toLowerCase() === inputClue);
-      if (localMatch) {
-        matchFound = true;
-        foundTeamName = localMatch.teamName;
-        foundAccessCode = localMatch.accessCode;
-      }
+      try {
+        const res = await lookupAccessCode({ data: { clue: inputClue } });
+        if (res && res.found) {
+          matchFound = true;
+          foundTeamName = res.teamName;
+          foundAccessCode = res.accessCode;
+        }
+      } catch {}
     }
 
     if (matchFound) {

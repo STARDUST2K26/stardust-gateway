@@ -13,6 +13,7 @@ import {
 import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
 import { TeamRegistry } from "@/components/admin/TeamRegistry";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { broadcastSync, subscribeToSync } from "@/lib/sync";
 
 const TITLE = "Case Control — STARDUST Admin";
 const DESC = "Restricted console for Project STARDUST case parameters.";
@@ -127,6 +128,11 @@ function AdminPage() {
         setReady(true);
       }
     })();
+
+    const unsubscribe = subscribeToSync((type) => {
+      if (type === "settings") loadSettings();
+    });
+    return () => unsubscribe();
   }, []);
 
   const checkLocalAuth = () => {
@@ -146,7 +152,6 @@ function AdminPage() {
       const res = await login({ data: { callsign, password } });
       ok = Boolean(res && res.ok);
     } catch {
-      // Fallback local authentication
       const storedCallsign = localStorage.getItem("stardust_admin_callsign") || "COMMANDER";
       const storedPassword = localStorage.getItem("stardust_admin_password") || "STARDUST2026!";
       const inputCallsign = callsign.trim().toUpperCase();
@@ -174,7 +179,9 @@ function AdminPage() {
     const payload = { startTime: new Date(startTime).toISOString(), ctfUrl, stats };
     let msg = "Case parameters updated";
 
-    // 1. Direct Supabase Cloud update from client
+    localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
+    broadcastSync("settings");
+
     if (isSupabaseConfigured()) {
       try {
         const { error } = await supabase
@@ -188,24 +195,16 @@ function AdminPage() {
           });
 
         if (!error) {
-          msg = "Case parameters synced to Supabase Cloud";
-          localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
-          setBusy(false);
-          setNote(msg);
-          return;
+          msg = "Case parameters synced to Cloud & Local Storage";
         }
       } catch (err) {
         console.warn("[Admin direct Supabase update error]:", err);
       }
-    }
-
-    // 2. Server RPC fallback
-    try {
-      const res = await saveSettings({ data: payload });
-      if (res && res.message) msg = res.message;
-    } catch {
-      localStorage.setItem("stardust_event_settings", JSON.stringify(payload));
-      msg = "Case parameters updated in local storage";
+    } else {
+      try {
+        const res = await saveSettings({ data: payload });
+        if (res && res.message) msg = res.message;
+      } catch {}
     }
 
     setBusy(false);

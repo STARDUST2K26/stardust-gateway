@@ -8,6 +8,7 @@ import {
   type TeamClue,
 } from "@/lib/codes.functions";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { broadcastSync, subscribeToSync } from "@/lib/sync";
 
 const inputClass =
   "w-full rounded-sm border border-signal/20 bg-void/60 px-3 py-2.5 font-mono text-xs tracking-[0.08em] text-foreground outline-none transition-colors duration-300 focus:border-signal/60";
@@ -75,6 +76,10 @@ export function TeamRegistry() {
 
   useEffect(() => {
     load();
+    const unsubscribe = subscribeToSync((type) => {
+      if (type === "clues") load();
+    });
+    return () => unsubscribe();
   }, []);
 
   async function commit(row: TeamClue | Draft, id?: string) {
@@ -83,7 +88,26 @@ export function TeamRegistry() {
     let msg = "Clue updated";
     let ok = false;
 
-    // 1. Direct Supabase Cloud sync from browser
+    // Update local state and broadcast immediately
+    const current = [...rows];
+    if (id) {
+      const idx = current.findIndex((r) => r.id === id);
+      if (idx !== -1) current[idx] = { ...current[idx], ...row };
+    } else {
+      const newEntry: TeamClue = {
+        id: String(Date.now()),
+        teamName: row.teamName,
+        clue: row.clue,
+        accessCode: row.accessCode,
+      };
+      current.push(newEntry);
+    }
+    localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+    setRows(current);
+    broadcastSync("clues");
+    ok = true;
+
+    // Direct Supabase Cloud sync from browser
     if (isSupabaseConfigured()) {
       try {
         const payload = {
@@ -98,39 +122,16 @@ export function TeamRegistry() {
           : await supabase.from("team_clues").insert(payload);
 
         if (!error) {
-          ok = true;
-          msg = "Clue synced to Supabase Cloud";
+          msg = "Clue synced to Supabase Cloud & Local Storage";
         }
       } catch (err) {
         console.warn("[TeamRegistry Supabase direct commit error]:", err);
       }
-    }
-
-    // 2. Server RPC / local storage fallback
-    if (!ok) {
+    } else {
       try {
         const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
-        ok = Boolean(res && res.ok);
         if (res && res.message) msg = res.message;
-      } catch {
-        const current = [...rows];
-        if (id) {
-          const idx = current.findIndex((r) => r.id === id);
-          if (idx !== -1) current[idx] = { ...current[idx], ...row };
-        } else {
-          const newEntry: TeamClue = {
-            id: String(Date.now()),
-            teamName: row.teamName,
-            clue: row.clue,
-            accessCode: row.accessCode,
-          };
-          current.push(newEntry);
-        }
-        localStorage.setItem("stardust_team_clues", JSON.stringify(current));
-        setRows(current);
-        ok = true;
-        msg = "Clue saved to local storage";
-      }
+      } catch {}
     }
 
     setBusy(false);
@@ -145,27 +146,24 @@ export function TeamRegistry() {
     setBusy(true);
     setNote(null);
 
-    let ok = false;
+    const current = rows.filter((r) => r.id !== id);
+    localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+    setRows(current);
+    broadcastSync("clues");
+
     if (isSupabaseConfigured()) {
       try {
         const { error } = await supabase.from("team_clues").delete().eq("id", id);
         if (!error) {
-          ok = true;
-          setNote("Entry deleted from Supabase Cloud");
+          setNote("Entry deleted from Supabase Cloud & Local Storage");
         }
       } catch (err) {
         console.warn("[TeamRegistry Supabase direct drop error]:", err);
       }
-    }
-
-    if (!ok) {
+    } else {
       try {
         await remove({ data: { id } });
-      } catch {
-        const current = rows.filter((r) => r.id !== id);
-        localStorage.setItem("stardust_team_clues", JSON.stringify(current));
-        setRows(current);
-      }
+      } catch {}
     }
 
     setBusy(false);

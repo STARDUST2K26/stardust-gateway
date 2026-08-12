@@ -29,20 +29,62 @@ export function TeamRegistry() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
-  const load = async () => setRows(await list());
+  const load = async () => {
+    try {
+      const data = await list();
+      if (Array.isArray(data)) {
+        setRows(data);
+        return;
+      }
+    } catch {
+      // Fallback local storage
+    }
+    const saved = localStorage.getItem("stardust_team_clues");
+    if (saved) {
+      try {
+        setRows(JSON.parse(saved));
+      } catch {}
+    }
+  };
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function commit(row: TeamClue | Draft, id?: string) {
     setBusy(true);
     setNote(null);
-    const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
+    let msg = "Clue updated";
+    let ok = false;
+
+    try {
+      const res = await save({ data: { ...row, ...(id ? { id } : {}) } });
+      ok = Boolean(res && res.ok);
+      if (res && res.message) msg = res.message;
+    } catch {
+      // Fallback local storage
+      const current = [...rows];
+      if (id) {
+        const idx = current.findIndex((r) => r.id === id);
+        if (idx !== -1) current[idx] = { ...current[idx], ...row };
+      } else {
+        const newEntry: TeamClue = {
+          id: String(Date.now()),
+          teamName: row.teamName,
+          clue: row.clue,
+          accessCode: row.accessCode,
+        };
+        current.push(newEntry);
+      }
+      localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+      setRows(current);
+      ok = true;
+      msg = "Clue saved to local storage";
+    }
+
     setBusy(false);
-    setNote(res.message);
-    if (res.ok) {
+    setNote(msg);
+    if (ok) {
       if (!id) setDraft(EMPTY);
       await load();
     }
@@ -50,7 +92,13 @@ export function TeamRegistry() {
 
   async function drop(id: string) {
     setBusy(true);
-    await remove({ data: { id } });
+    try {
+      await remove({ data: { id } });
+    } catch {
+      const current = rows.filter((r) => r.id !== id);
+      localStorage.setItem("stardust_team_clues", JSON.stringify(current));
+      setRows(current);
+    }
     setBusy(false);
     await load();
   }

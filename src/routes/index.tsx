@@ -6,7 +6,8 @@ import { BootSequence } from "@/components/space/BootSequence";
 import { Hero } from "@/components/space/Hero";
 import { Film } from "@/components/space/Film";
 import { getEventSettings } from "@/lib/admin.functions";
-import { DEFAULT_STATS } from "@/lib/mission";
+import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 const TITLE = "STARDUST — Computer Week 2026 Classified Investigation";
 const DESC =
@@ -18,8 +19,19 @@ export const Route = createFileRoute("/")({
       const res = await getEventSettings();
       if (res && res.startTime) return res;
     } catch (err) {
-      console.warn("[Route loader fallback]:", err);
+      console.warn("[Route loader server RPC fallback]:", err);
     }
+
+    if (typeof window !== "undefined") {
+      const savedSettings = localStorage.getItem("stardust_event_settings");
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          if (parsed && parsed.startTime) return parsed;
+        } catch {}
+      }
+    }
+
     return {
       startTime: "2026-11-14T09:00:00Z",
       ctfUrl: "/ctf",
@@ -40,9 +52,51 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const settings = Route.useLoaderData();
+  const initialSettings = Route.useLoaderData();
+  const [settings, setSettings] = useState<{
+    startTime: string;
+    ctfUrl: string;
+    stats: MissionStat[];
+  }>(initialSettings);
+
   const [booted, setBooted] = useState(false);
   const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    // Query live settings from Supabase Cloud or localStorage directly on client mount
+    (async () => {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabase
+            .from("event_settings")
+            .select("start_time, ctf_url, stats")
+            .eq("id", 1)
+            .maybeSingle();
+
+          if (!error && data) {
+            setSettings({
+              startTime: data.start_time || "2026-11-14T09:00:00Z",
+              ctfUrl: data.ctf_url || "/ctf",
+              stats: Array.isArray(data.stats) && data.stats.length ? (data.stats as any) : DEFAULT_STATS,
+            });
+            return;
+          }
+        } catch (err) {
+          console.warn("[Index Supabase live settings query error]:", err);
+        }
+      }
+
+      const savedSettings = localStorage.getItem("stardust_event_settings");
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          if (parsed && parsed.startTime) {
+            setSettings(parsed);
+          }
+        } catch {}
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!booted) {

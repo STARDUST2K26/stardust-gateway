@@ -2,7 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
+import { initSecurityShield } from "./lib/security-shield";
 import "./styles.css";
+
+// Initialize anti-copy, anti-right-click and DevTools deterrents shield
+initSecurityShield();
 
 // Safeguard TanStack Start hydration globals using Proxy shield for static SPA mode
 if (typeof window !== "undefined") {

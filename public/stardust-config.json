@@ -1,36 +1,108 @@
 {
   "eventSettings": {
-    "startTime": "2026-11-14T09:00:00Z",
-    "ctfUrl": "/ctf",
+    "startTime": "2026-11-14T05:00:00Z",
+    "ctfUrl": "/#/",
     "stats": [
       { "label": "INVESTIGATORS", "value": "60" },
+      { "label": "TEAMS", "value": "15" },
       { "label": "HOURS OF ACCESS", "value": "1.5" },
-      { "label": "SEALED LAYERS", "value": "04" },
-      { "label": "FILES RECOVERED", "value": "0.02%" }
+      { "label": "SEALED LEVELS", "value": "10" }
     ]
   },
   "adminCredentials": {
-    "callsign": "COMMANDER",
-    "password": "STARDUST2026!"
+    "callsign": "CDR",
+    "password": "St@rdust2K26"
   },
   "teamClues": [
     {
       "id": "clue-1",
-      "teamName": "ORION PHALANX",
-      "clue": "ASTERIA-71-ALPHA",
-      "accessCode": "KEY-7109-ALPHA"
+      "teamName": "ALPHA",
+      "clue": "ushuaia",
+      "accessCode": "St@rDust!71"
     },
     {
       "id": "clue-2",
-      "teamName": "CYGNUS INITIATIVE",
-      "clue": "MIRROR-SIGNAL-9",
-      "accessCode": "KEY-9942-BETA"
+      "teamName": "BRAVO",
+      "clue": "tromso",
+      "accessCode": "C0sm1c#2027"
     },
     {
       "id": "clue-3",
-      "teamName": "VANGUARD SEC",
-      "clue": "DEEPSPACE-OMEGA",
-      "accessCode": "KEY-0071-OMEGA"
+      "teamName": "CHARLIE",
+      "clue": "kigali",
+      "accessCode": "M1rr0r@1971"
+    },
+    {
+      "id": "clue-4",
+      "teamName": "DELTA",
+      "clue": "longyearbyen",
+      "accessCode": "D33pSp@ce!"
+    },
+    {
+      "id": "clue-5",
+      "teamName": "ECHO",
+      "clue": "samarkand",
+      "accessCode": "V0id#S1gn@1"
+    },
+    {
+      "id": "clue-6",
+      "teamName": "FOXTROT",
+      "clue": "lalibela",
+      "accessCode": "0rb1t@171"
+    },
+    {
+      "id": "clue-7",
+      "teamName": "GOLF",
+      "clue": "torshavn",
+      "accessCode": "Tr@c3Th3St@r$"
+    },
+    {
+      "id": "clue-8",
+      "teamName": "HOTEL",
+      "clue": "windhoek",
+      "accessCode": "L0stM1ss10n!"
+    },
+    {
+      "id": "clue-9",
+      "teamName": "INDIA",
+      "clue": "dunedin",
+      "accessCode": "C0sm0s@1971"
+    },
+    {
+      "id": "clue-10",
+      "teamName": "JULIETT",
+      "clue": "merida",
+      "accessCode": "D@rkM@tter#"
+    },
+    {
+      "id": "clue-11",
+      "teamName": "KILO",
+      "clue": "kotor",
+      "accessCode": "St@rL1ght!"
+    },
+    {
+      "id": "clue-12",
+      "teamName": "LIMA",
+      "clue": "bishkek",
+      "accessCode": "F1n@lTr@c3"
+    },
+    {
+      "id": "clue-13",
+      "teamName": "MIKE",
+      "clue": "astana",
+      "accessCode": "L@stS1gn@1"
+    },
+    {
+      "id": "clue-14",
+      "teamName": "NOVEMBER",
+      "clue": "aizawl",
+      "accessCode": "Tr@nsm1ss10n#71"
+    },
+    {
+      "id": "clue-15",
+      "teamName": "ORION",
+      "clue": "itanagar",
+      "accessCode": "Ex0pl@n3t!27"
     }
   ]
 }

@@ -8,9 +8,9 @@ import { Film } from "@/components/space/Film";
 import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
 import { loadStaticConfig } from "@/lib/static-config";
 
-const TITLE = "STARDUST — Computer Week 2026 Classified Investigation";
+const TITLE = "STARDUST 2K26";
 const DESC =
-  "The 1971 ASTERIA mission went silent and the MIRROR records were sealed. Project STARDUST is declassified for 36 hours. Seven layers. One key.";
+  "The 1971 ASTERIA mission went silent and the MIRROR records were sealed. Project STARDUST is declassified for 90 minutes. Ten levels. One key.";
 
 export const Route = createFileRoute("/")({
   loader: async () => {

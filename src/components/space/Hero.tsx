@@ -57,7 +57,7 @@ export function Hero({
         </h1>
 
         <p className="mx-auto mt-8 max-w-[52ch] font-mono text-[11px] uppercase leading-[2.4] tracking-[0.34em] text-muted-foreground sm:text-xs">
-          Project STARDUST · Computer Week 2026
+          STARDUST · Computer Week 2026
         </p>
 
         <p className="mx-auto mt-7 max-w-[54ch] text-sm leading-[1.9] text-foreground/60">
@@ -95,13 +95,13 @@ export function Hero({
           </div>
 
           <span className="label-xs text-[9px] text-foreground/35">
-            until the archive is unsealed
+            {/* until the archive is unsealed */}
           </span>
         </div>
       </div>
 
       <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3">
-        <span className="label-xs text-[9px]">the briefing plays on entry</span>
+        <span className="label-xs text-[9px]">{/* the briefing plays on entry */}</span>
         <span className="h-10 w-px bg-gradient-to-b from-signal/70 to-transparent" />
       </div>
 

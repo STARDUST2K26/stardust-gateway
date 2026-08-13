@@ -20,7 +20,7 @@ export function FlightPath() {
 
       <Reveal delay={100}>
         <h2 className="mt-12 max-w-[18ch] font-display text-[clamp(1.9rem,5vw,3.6rem)] font-medium leading-[1.05]">
-          Thirty-six hours of declassification.
+          Ninety minutes of declassification.
         </h2>
       </Reveal>
 

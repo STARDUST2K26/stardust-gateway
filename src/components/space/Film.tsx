@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CodeTerminal } from "./CodeTerminal";
+import { AccessCodeTable } from "./AccessCodeTable";
 import type { MissionStat } from "@/lib/mission";
 import dishImg from "@/assets/film-dish.jpg";
 import probeImg from "@/assets/film-probe.jpg";
@@ -271,8 +272,11 @@ export function Film({ stats, onExit }: { stats: MissionStat[]; onExit: () => vo
           )}
 
           {atTerminal && (
-            <div className="anim-film-in mt-10" onClick={(e) => e.stopPropagation()}>
+            <div className="anim-film-in mt-6 space-y-6" onClick={(e) => e.stopPropagation()}>
               <CodeTerminal />
+              <div className="mt-8 border-t border-signal/20 pt-6">
+                <AccessCodeTable />
+              </div>
             </div>
           )}
         </div>

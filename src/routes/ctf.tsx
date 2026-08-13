@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CodeTerminal } from "@/components/space/CodeTerminal";
+import { AccessCodeTable } from "@/components/space/AccessCodeTable";
 import { loadStaticConfig } from "@/lib/static-config";
 
 const TITLE = "CTF Case Files — STARDUST Classified Portal";
@@ -22,25 +23,13 @@ export const Route = createFileRoute("/ctf")({
 
 function CtfPage() {
   const [ctfUrl, setCtfUrl] = useState<string>("");
-  const [startTime, setStartTime] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       try {
         const config = await loadStaticConfig();
         if (config.eventSettings.ctfUrl) setCtfUrl(config.eventSettings.ctfUrl);
-        if (config.eventSettings.startTime) setStartTime(config.eventSettings.startTime);
-        return;
       } catch {}
-
-      const saved = localStorage.getItem("stardust_event_settings");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.ctfUrl) setCtfUrl(parsed.ctfUrl);
-          if (parsed.startTime) setStartTime(parsed.startTime);
-        } catch {}
-      }
     })();
   }, []);
 
@@ -63,7 +52,7 @@ function CtfPage() {
           <span className="hairline w-40" />
         </div>
 
-        {ctfUrl && ctfUrl !== "/ctf" && (
+        {ctfUrl && ctfUrl !== "/ctf" && ctfUrl !== "/#/" && (
           <div className="glass flex flex-col items-center justify-between gap-4 rounded-md p-6 sm:flex-row">
             <div>
               <span className="label-xs text-signal">EXTERNAL CTF PLATFORM UPLINK</span>
@@ -83,11 +72,11 @@ function CtfPage() {
         )}
 
         <section className="glass rounded-md p-8 space-y-6">
-          <h2 className="label-xs text-signal/80">RECOVERED FRAGMENT VERIFICATION</h2>
-          <p className="font-mono text-xs leading-[2] text-foreground/60">
-            Enter recovered clue keys or fragment hashes from completed challenges to receive team access codes for subsequent mission stages.
-          </p>
           <CodeTerminal />
+        </section>
+
+        <section className="glass rounded-md p-8">
+          <AccessCodeTable />
         </section>
 
         <section className="grid gap-6 sm:grid-cols-2">

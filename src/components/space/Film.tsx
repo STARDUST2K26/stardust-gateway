@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CodeTerminal } from "./CodeTerminal";
 import type { MissionStat } from "@/lib/mission";
+import type { StaticTeamClue } from "@/lib/static-config";
 import dishImg from "@/assets/film-dish.jpg";
 import probeImg from "@/assets/film-probe.jpg";
 import controlImg from "@/assets/film-control.jpg";
@@ -109,7 +110,15 @@ const LAST = ACTS.length - 1;
  * The film. Auto-plays act by act, click advances, Enter jumps to the
  * verification terminal, Esc returns to the title card.
  */
-export function Film({ stats, onExit }: { stats: MissionStat[]; onExit: () => void }) {
+export function Film({
+  stats,
+  activeTeam,
+  onExit,
+}: {
+  stats: MissionStat[];
+  activeTeam?: StaticTeamClue | null;
+  onExit: () => void;
+}) {
   const [i, setI] = useState(0);
   const [prevImage, setPrevImage] = useState<{ src: string; contain?: boolean; key: number } | null>(
     null,
@@ -160,6 +169,12 @@ export function Film({ stats, onExit }: { stats: MissionStat[]; onExit: () => vo
         if (!atTerminal) next();
       }}
     >
+      {activeTeam && (
+        <div className="absolute top-4 left-5 sm:left-8 z-30 flex items-center gap-2 rounded border border-signal/40 bg-black/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-signal shadow-[0_0_15px_rgba(0,255,170,0.2)]">
+          <span className="h-2 w-2 rounded-full bg-signal animate-pulse" />
+          <span>AUTHENTICATED: TEAM {activeTeam.teamName}</span>
+        </div>
+      )}
       <div className="anim-gate-weave absolute inset-0">
         {/* outgoing frame */}
         {prevImage && (

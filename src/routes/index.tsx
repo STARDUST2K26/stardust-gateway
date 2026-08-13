@@ -5,8 +5,9 @@ import { Starfield } from "@/components/space/Starfield";
 import { BootSequence } from "@/components/space/BootSequence";
 import { Hero } from "@/components/space/Hero";
 import { Film } from "@/components/space/Film";
+import { ParticipantAuthModal } from "@/components/space/ParticipantAuthModal";
 import { DEFAULT_STATS, type MissionStat } from "@/lib/mission";
-import { loadStaticConfig } from "@/lib/static-config";
+import { loadStaticConfig, type StaticTeamClue } from "@/lib/static-config";
 
 const TITLE = "STARDUST 2K26";
 const DESC =
@@ -25,8 +26,8 @@ export const Route = createFileRoute("/")({
     }
 
     return {
-      startTime: "2026-11-14T09:00:00Z",
-      ctfUrl: "/ctf",
+      startTime: "2026-08-17T05:00:00Z",
+      ctfUrl: "/#/",
       stats: DEFAULT_STATS,
     };
   },
@@ -53,26 +54,25 @@ function Index() {
 
   const [booted, setBooted] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<StaticTeamClue | null>(null);
 
   useEffect(() => {
-    // Query live settings from Supabase Cloud or localStorage directly on client mount
     (async () => {
       try {
         const config = await loadStaticConfig();
         setSettings(config.eventSettings);
-        return;
       } catch {}
+    })();
 
-      const savedSettings = localStorage.getItem("stardust_event_settings");
-      if (savedSettings) {
+    if (typeof window !== "undefined") {
+      const savedSession = sessionStorage.getItem("stardust_active_team");
+      if (savedSession) {
         try {
-          const parsed = JSON.parse(savedSettings);
-          if (parsed && parsed.startTime) {
-            setSettings(parsed);
-          }
+          setActiveTeam(JSON.parse(savedSession));
         } catch {}
       }
-    })();
+    }
   }, []);
 
   useEffect(() => {
@@ -82,6 +82,20 @@ function Index() {
     }
     document.body.style.overflow = "";
   }, [booted]);
+
+  const handleBegin = () => {
+    if (!activeTeam) {
+      setAuthOpen(true);
+    } else {
+      setPlaying(true);
+    }
+  };
+
+  const handleAuthSuccess = (team: StaticTeamClue) => {
+    setActiveTeam(team);
+    setAuthOpen(false);
+    setPlaying(true);
+  };
 
   return (
     <div className="relative h-[100svh] w-full overflow-hidden bg-void">
@@ -97,11 +111,23 @@ function Index() {
         <Hero
           ready={booted}
           startTime={settings.startTime}
-          onBegin={() => setPlaying(true)}
+          onBegin={handleBegin}
         />
       </main>
 
-      {playing && <Film stats={settings.stats} onExit={() => setPlaying(false)} />}
+      <ParticipantAuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
+      {playing && (
+        <Film
+          stats={settings.stats}
+          activeTeam={activeTeam}
+          onExit={() => setPlaying(false)}
+        />
+      )}
     </div>
   );
 }

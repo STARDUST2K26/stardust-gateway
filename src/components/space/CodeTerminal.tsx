@@ -92,15 +92,15 @@ export function CodeTerminal() {
         <div className="mb-4 flex items-center justify-between border-b border-signal/20 pb-3">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-signal animate-pulse" />
-            <span className="label-xs text-signal">VERIFICATION TERMINAL · REEL 08</span>
+            <span className="label-xs text-signal">CTF PARTICIPANT AUTHENTICATION · REEL 08</span>
           </div>
-          <span className="label-xs text-foreground/40">SECURE PROTOCOL</span>
+          <span className="label-xs text-foreground/40">CLASSIFIED UPLINK</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="clue-input" className="block text-[10px] uppercase tracking-widest text-foreground/60 mb-1.5">
-              ENTER RECOVERED CLUE OR FRAGMENT KEY:
+              ENTER RECOVERED CLUE KEY TO UNLOCK CTF CREDENTIALS:
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-3 text-signal font-bold">&gt;</span>
@@ -109,7 +109,7 @@ export function CodeTerminal() {
                 type="text"
                 value={clue}
                 onChange={(e) => setClue(e.target.value)}
-                placeholder="e.g. ASTERIA-71-ALPHA"
+                placeholder="e.g. ushuaia, tromso, kigali..."
                 spellCheck={false}
                 autoComplete="off"
                 className="w-full rounded border border-signal/30 bg-void/90 py-2.5 pl-8 pr-4 font-mono text-xs text-foreground placeholder:text-muted-foreground/40 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
@@ -125,42 +125,45 @@ export function CodeTerminal() {
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-signal border-t-transparent" />
-                QUERYING ARCHIVE...
+                VERIFYING CLUE & GENERATING CREDENTIALS...
               </span>
             ) : (
-              <span>VERIFY FRAGMENT</span>
+              <span>UNLOCK CTF CREDENTIALS</span>
             )}
           </button>
         </form>
 
         {result.status === "success" && (
-          <div className="mt-5 rounded border border-signal/50 bg-signal/10 p-4 space-y-2 text-foreground">
-            <div className="flex items-center justify-between">
+          <div className="mt-5 rounded border border-signal/50 bg-signal/10 p-4 space-y-3 text-foreground">
+            <div className="flex items-center justify-between border-b border-signal/20 pb-2">
               <span className="text-[10px] uppercase font-bold tracking-wider text-signal">
-                [ ACCESS GRANTED · REGISTRY MATCH ]
+                [ AUTHENTICATION SUCCESSFUL · CTF ACCESS GRANTED ]
               </span>
             </div>
             {result.teamName && (
-              <div>
-                <span className="text-foreground/50">TEAM: </span>
-                <span className="font-semibold text-foreground">{result.teamName}</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-foreground/50">ASSIGNED TEAM: </span>
+                <span className="font-bold text-foreground text-sm tracking-wide">{result.teamName}</span>
               </div>
             )}
             {result.accessCode && (
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center justify-between pt-1 border-t border-signal/10">
                 <div>
-                  <span className="text-foreground/50">ACCESS CODE: </span>
-                  <span className="font-bold text-signal tracking-widest text-sm">{result.accessCode}</span>
+                  <span className="text-foreground/50">CTF ACCESS CODE / PASSWORD: </span>
+                  <span className="font-bold text-signal tracking-widest text-sm select-all">{result.accessCode}</span>
                 </div>
                 <button
                   type="button"
                   onClick={copyCode}
-                  className="rounded border border-signal/40 bg-black/40 px-2.5 py-1 text-[10px] text-signal hover:bg-signal/20 transition-colors"
+                  className="rounded border border-signal/40 bg-black/60 px-3 py-1.5 text-[10px] font-bold text-signal hover:bg-signal/20 transition-colors"
                 >
-                  {copied ? "COPIED!" : "COPY CODE"}
+                  {copied ? "COPIED TO CLIPBOARD!" : "COPY ACCESS CODE"}
                 </button>
               </div>
             )}
+            <p className="text-[10px] text-foreground/40 italic pt-1">
+              Use these credentials to authenticate into the STARDUST CTF competition platform.
+            </p>
           </div>
         )}
 

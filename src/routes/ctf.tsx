@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CodeTerminal } from "@/components/space/CodeTerminal";
-import { AccessCodeTable } from "@/components/space/AccessCodeTable";
 import { loadStaticConfig } from "@/lib/static-config";
 
 const TITLE = "CTF Case Files — STARDUST Classified Portal";
@@ -73,10 +72,6 @@ function CtfPage() {
 
         <section className="glass rounded-md p-8 space-y-6">
           <CodeTerminal />
-        </section>
-
-        <section className="glass rounded-md p-8">
-          <AccessCodeTable />
         </section>
 
         <section className="grid gap-6 sm:grid-cols-2">
